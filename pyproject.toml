@@ -9,6 +9,8 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.6"
+boto3 = "^1.16.3"
+click = "^7.1.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
