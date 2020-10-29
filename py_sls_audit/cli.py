@@ -6,6 +6,8 @@ import boto3
 import botocore.exceptions
 import click
 
+_COMMANDS = ["metrics", "configuration", "exit"]
+
 
 class AWSBridge:
     def __init__(self, session):
@@ -20,12 +22,6 @@ class AWSBridge:
         self.functions = [fun.get("FunctionName") for fun in response.get("Functions")]
         for index, name in enumerate(self.functions):
             click.echo(f"{index + 1}. {name}")
-
-    def get_configuration(self, index):
-        function = self.functions[index]
-        client = self.session.client("lambda")
-        response = client.get_function_configuration(FunctionName=function)
-        click.echo(json.dumps(response, indent=2))
 
     def fetch_metrics(self, index):
         function = self.functions[index]
@@ -57,8 +53,25 @@ class AWSBridge:
             Period=period,
             Statistics=["Sum"],
         )
-        print(response)
-        return response
+        click.echo(json.dumps(response, indent=2))
+
+    def command_exit(self, *args):
+        sys.exit(1)
+
+    def command_configuration(self, index):
+        function = self.functions[index]
+        client = self.session.client("lambda")
+        response = client.get_function_configuration(FunctionName=function)
+        click.echo(json.dumps(response, indent=2))
+
+    def command_metrics(self, index):
+        self.fetch_metrics(index)
+
+        if len(self.metrics) < 1:
+            return
+
+        metric_index = prompt_for_index("metric", len(self.metrics))
+        self.get_metric_statistics(index, metric_index)
 
 
 def prompt_for_index(name, total):
@@ -85,8 +98,12 @@ def run(profile, region):
 
     proxy.fetch_functions()
     function_index = prompt_for_index("function", len(proxy.functions))
+    click.clear()
 
-    proxy.fetch_metrics(function_index)
-    metric_index = prompt_for_index("metric", len(proxy.metrics))
-
-    proxy.get_metric_statistics(function_index, metric_index)
+    while True:
+        choice = click.prompt(
+            "Please enter command to run", type=click.Choice(_COMMANDS)
+        )
+        click.clear()
+        getattr(proxy, f"command_{choice}")(function_index)
+        click.echo("")
