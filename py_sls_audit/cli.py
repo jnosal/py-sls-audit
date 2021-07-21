@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import json
 import sys
 
@@ -6,72 +5,45 @@ import boto3
 import botocore.exceptions
 import click
 
-_COMMANDS = ["metrics", "configuration", "exit"]
+from .common import AWSBridge
+
+_COMMANDS = ["metrics", "conf", "exit"]
 
 
-class AWSBridge:
-    def __init__(self, session):
-        self.session = session
-        self.functions = []
-        self.metrics = []
+class CLIAwsProxy(AWSBridge):
 
-    def fetch_functions(self):
-        client = self.session.client("lambda")
+    def fetch_and_list_functions(self):
+        data = self.fetch_functions()
 
-        response = client.list_functions()
-        self.functions = [fun.get("FunctionName") for fun in response.get("Functions")]
-        for index, name in enumerate(self.functions):
+        for index, name in enumerate(data):
             click.echo(f"{index + 1}. {name}")
 
-    def fetch_metrics(self, index):
-        function = self.functions[index]
-        client = self.session.client("cloudwatch")
-
-        response = client.list_metrics(
-            Namespace="AWS/Lambda",
-            Dimensions=[{"Name": "FunctionName", "Value": function}],
-        )
-
-        self.metrics = [metric.get("MetricName") for metric in response.get("Metrics")]
-        self.metrics = sorted(set(self.metrics))
-        for index, name in enumerate(self.metrics):
+    def fetch_and_list_metrics(self, index):
+        data = self.fetch_metrics(index)
+        for index, name in enumerate(data):
             click.echo(f"{index + 1}. {name}")
 
-    def get_metric_statistics(self, function_index, metric_index):
-        function = self.functions[function_index]
-        metric = self.metrics[metric_index]
-        client = self.session.client("cloudwatch")
-        end_time = datetime.utcnow()
-        start_time = end_time - timedelta(hours=1)
-        period = 60
-        response = client.get_metric_statistics(
-            Namespace="AWS/Lambda",
-            MetricName=metric,
-            Dimensions=[{"Name": "FunctionName", "Value": function}],
-            StartTime=start_time,
-            EndTime=end_time,
-            Period=period,
-            Statistics=["Sum"],
-        )
-        click.echo(json.dumps(response, indent=2))
+    def fetch_and_list_metric_statistics(self, function_index, metric_index):
+        data = self.fetch_metric_statistics(function_index, metric_index)
+        click.echo(json.dumps(data, indent=2))
 
     def command_exit(self, *args):
         sys.exit(1)
 
-    def command_configuration(self, index):
+    def command_conf(self, index):
         function = self.functions[index]
         client = self.session.client("lambda")
         response = client.get_function_configuration(FunctionName=function)
         click.echo(json.dumps(response, indent=2))
 
     def command_metrics(self, index):
-        self.fetch_metrics(index)
+        self.fetch_and_list_metrics(index)
 
         if len(self.metrics) < 1:
             return
 
         metric_index = prompt_for_index("metric", len(self.metrics))
-        self.get_metric_statistics(index, metric_index)
+        self.fetch_and_list_metric_statistics(index, metric_index)
 
 
 def prompt_for_index(name, total):
@@ -94,9 +66,9 @@ def run(profile, region):
         click.echo(f"Could not load profile {profile}")
         sys.exit(1)
 
-    proxy = AWSBridge(session=session)
+    proxy = CLIAwsProxy(session=session)
 
-    proxy.fetch_functions()
+    proxy.fetch_and_list_functions()
     function_index = prompt_for_index("function", len(proxy.functions))
     click.clear()
 
