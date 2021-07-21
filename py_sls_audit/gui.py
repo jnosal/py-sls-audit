@@ -33,24 +33,24 @@ class GUI:
         self.root.set_status_bar_text("Quit - q | Refresh - r")
 
         self.list_functions_menu = self.root.add_scroll_menu(
-            "Functions", 0, 0, row_span=6, column_span=2
+            "Functions", 0, 0, row_span=5, column_span=2
         )
         self.list_functions_menu.add_key_command(py_cui.keys.KEY_ENTER, self.select_function)
         self.list_functions_menu.add_item_list(self.proxy.functions)
 
         self.metrics_menu = self.root.add_scroll_menu(
-            "Metric", 0, 2, row_span=7, column_span=6,
+            "Metric", 5, 0, row_span=2, column_span=2,
         )
 
         # Textboxes for new branches and commits
         self.period_textbox = self.root.add_scroll_menu(
-            "Period", 6, 0, column_span=2, row_span=2
+            "Period", 7, 0, column_span=2, row_span=2
         )
         self.phrase_textbox = self.root.add_text_box(
-            "Phrase", 8, 0, column_span=2, initial_text="Search..."
+            "Phrase", 0, 2, column_span=6, initial_text="Search..."
         )
         self.status_message_box = self.root.add_text_block(
-            "Status", 7, 2, column_span=6, row_span=2, initial_text="***"
+            "Status", 1, 2, column_span=6, row_span=8, initial_text="***"
         )
 
         elements = [
